@@ -245,14 +245,15 @@ spec:
                     string:
                       type: Format
                       fmt: "%s-scheduler"
+              # Use timeWindow fields for time boundaries (start/end/timezone)
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.schedule.timezone
+                fromFieldPath: spec.timeWindow.timezone
                 toFieldPath: spec.forProvider.environment.variables.TIMEZONE
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.schedule.startTime
+                fromFieldPath: spec.timeWindow.start
                 toFieldPath: spec.forProvider.environment.variables.START_TIME
               - type: FromCompositeFieldPath
-                fromFieldPath: spec.schedule.endTime
+                fromFieldPath: spec.timeWindow.end
                 toFieldPath: spec.forProvider.environment.variables.END_TIME
 
     - step: create-event-rule

@@ -18,9 +18,6 @@ spec:
     timezone: "UTC"
   schedule:
     interval: "1 hour"
-    timezone: "UTC"
-    startTime: "09:00"
-    endTime: "17:00"
   resources:
     productionEnvironments:
       - "prod"

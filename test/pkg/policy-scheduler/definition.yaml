@@ -66,7 +66,7 @@ spec:
                   - end
               schedule:
                 type: object
-                description: "Scheduler configuration"
+                description: "Scheduler configuration for policy checks"
                 properties:
                   interval:
                     type: string
@@ -77,18 +77,6 @@ spec:
                       - "30 minutes"
                       - "1 hour"
                       - "2 hours"
-                  timezone:
-                    type: string
-                    description: "Timezone for scheduling"
-                    default: "UTC"
-                  startTime:
-                    type: string
-                    description: "Start time for access (HH:MM UTC)"
-                    default: "09:00"
-                  endTime:
-                    type: string
-                    description: "End time for access (HH:MM UTC)"
-                    default: "17:00"
               resources:
                 type: object
                 description: "Resource-specific access controls"

@@ -188,7 +188,6 @@ Feature: Policy Scheduler Composition
       | spec.timeWindow.start   | 09:00       |
       | spec.timeWindow.end     | 17:00       |
       | spec.timeWindow.timezone| America/New_York |
-      | spec.schedule.timezone  | America/New_York |
     When crossplane renders the composition
     Then check that 6 resources are provisioning
     And check that resource scheduler-lambda has parameters

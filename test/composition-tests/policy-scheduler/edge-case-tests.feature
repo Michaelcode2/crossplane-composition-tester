@@ -10,7 +10,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @critical
   Scenario: Policy scheduler handles midnight time window crossing
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name               | param value |
       | spec.timeWindow.start   | 22:00       |
       | spec.timeWindow.end     | 06:00       |
@@ -23,7 +23,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @major
   Scenario: Policy scheduler with minimal access window
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name               | param value |
       | spec.timeWindow.start   | 12:00       |
       | spec.timeWindow.end     | 12:15       |
@@ -36,7 +36,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @major
   Scenario: Policy scheduler with maximum allowed actions
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name              | param value     |
       | spec.allowedActions[0] | ec2:*           |
       | spec.allowedActions[1] | s3:*            |
@@ -49,7 +49,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @critical
   Scenario: Policy scheduler with emergency access enabled
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name                              | param value                                    |
       | spec.resources.emergencyAccess.enabled | true                                           |
       | spec.resources.emergencyAccess.approvers[0] | arn:aws:iam::123456789012:user/emergency-admin |
@@ -59,7 +59,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @major
   Scenario: Policy scheduler with multiple production environments
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name                                  | param value |
       | spec.resources.productionEnvironments[0]  | prod        |
       | spec.resources.productionEnvironments[1]  | production  |
@@ -70,7 +70,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @major
   Scenario: Policy scheduler with extensive restricted actions
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name                              | param value               |
       | spec.resources.restrictedActions[0]    | ec2:TerminateInstances    |
       | spec.resources.restrictedActions[1]    | rds:DeleteDBInstance      |
@@ -82,7 +82,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @minor
   Scenario: Policy scheduler with custom description and names
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name          | param value                                    |
       | spec.roleName      | custom-time-restricted-role                    |
       | spec.policyName    | custom-time-restricted-policy                  |
@@ -98,6 +98,8 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @critical
   Scenario: Verify resource dependencies and ordering
+    When crossplane renders the composition
+    Then check that 6 resources are provisioning
     Given change observed resource production-role with status READY
     And change observed resource production-role with parameters
       | param name              | param value                                      |
@@ -115,12 +117,11 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @major
   Scenario: Lambda function with all environment variables configured
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name               | param value      |
       | spec.timeWindow.start   | 08:30            |
       | spec.timeWindow.end     | 17:30            |
       | spec.timeWindow.timezone| Europe/London    |
-      | spec.schedule.timezone  | Europe/London    |
     When crossplane renders the composition
     Then check that resource scheduler-lambda has parameters
       | param name                                         | param value   |
@@ -149,7 +150,7 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @major
   Scenario: CloudWatch Event Rule with different schedule intervals
-    Given update claim parameters
+    Given input claim is changed with parameters
       | param name             | param value  |
       | spec.schedule.interval | 2 hours      |
     When crossplane renders the composition
@@ -170,6 +171,8 @@ Feature: Policy Scheduler Edge Cases and Error Handling
 
   @critical
   Scenario: Full integration test with all observed resources ready
+    When crossplane renders the composition
+    Then check that 6 resources are provisioning
     Given change all observed resources with status READY
     And change observed resource production-role with parameters
       | param name              | param value                                      |
