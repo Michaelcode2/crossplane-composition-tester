@@ -20,8 +20,7 @@ metadata:
     crossplane.io/claim-name: green-demo-sa
     crossplane.io/claim-namespace: demo
     crossplane.io/composite: green-demo-sa-vsmvw
-  name: green-demo-sa
-  namespace: demo
+  name: green-demo-sa-vsmvw
 spec:
   serviceAccountName: green-demo-sa
   serviceAccountNamespace: demo

@@ -16,7 +16,7 @@ Feature: Service Account composition
   Tests the service account compositions
 
   Background:
-    Given input claim claim.yaml
+    Given input claim xr.yaml
     # following step is optional: default input composition is composition.yaml 
     And input composition composition.yaml
     # following step is optional: default input functions is functions.yaml
