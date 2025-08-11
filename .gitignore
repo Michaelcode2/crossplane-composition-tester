@@ -168,3 +168,6 @@ allure_results/
 
 .target_project
 dump/
+
+# local history folder
+.history/

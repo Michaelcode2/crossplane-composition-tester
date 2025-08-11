@@ -1,41 +1,189 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
-  name: xpolicyscheduler.example.com
+  name: xpolicyschedulers.infra.example.com
 spec:
-  group: policyscheduler.example.com
+  group: infra.example.com
   names:
     kind: XPolicyScheduler
     plural: xpolicyschedulers
-  enforcedCompositionRef:
-    name: xpolicyscheduler.aws.example.com
+  claimNames:
+    kind: PolicyScheduler
+    plural: policyschedulers
   versions:
-    - name: v1alpha1
-      served: true
-      referenceable: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              properties:
-                schedules:
-                  type: array
-                  description: list of schedules
-                  items:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              roleName:
+                type: string
+                description: "Name for the IAM role"
+                default: "production-access-role"
+              policyName:
+                type: string
+                description: "Name for the IAM policy"
+                default: "production-access-policy"
+              description:
+                type: string
+                description: "Description for the role and policy"
+                default: "Time-restricted production access"
+              allowedActions:
+                type: array
+                description: "List of AWS actions allowed during access window"
+                items:
+                  type: string
+                default:
+                  - "ec2:*"
+                  - "s3:*"
+                  - "rds:Describe*"
+                  - "rds:List*"
+              timeWindow:
+                type: object
+                description: "Time window for production access"
+                properties:
+                  start:
+                    type: string
+                    description: "Start time for access window (HH:MM format, UTC)"
+                    default: "09:00"
+                    pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+                  end:
+                    type: string
+                    description: "End time for access window (HH:MM format, UTC)"
+                    default: "17:00"
+                    pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+                  timezone:
+                    type: string
+                    description: "Timezone for the access window"
+                    default: "UTC"
+                required:
+                  - start
+                  - end
+              schedule:
+                type: object
+                description: "Scheduler configuration"
+                properties:
+                  interval:
+                    type: string
+                    description: "How often to check and update policy attachments"
+                    default: "1 hour"
+                    enum:
+                      - "15 minutes"
+                      - "30 minutes"
+                      - "1 hour"
+                      - "2 hours"
+                  timezone:
+                    type: string
+                    description: "Timezone for scheduling"
+                    default: "UTC"
+                  startTime:
+                    type: string
+                    description: "Start time for access (HH:MM UTC)"
+                    default: "09:00"
+                  endTime:
+                    type: string
+                    description: "End time for access (HH:MM UTC)"
+                    default: "17:00"
+              resources:
+                type: object
+                description: "Resource-specific access controls"
+                properties:
+                  productionEnvironments:
+                    type: array
+                    description: "List of production environment identifiers"
+                    items:
+                      type: string
+                    default:
+                      - "prod"
+                      - "production"
+                  restrictedActions:
+                    type: array
+                    description: "Actions that require additional approval"
+                    items:
+                      type: string
+                    default:
+                      - "ec2:TerminateInstances"
+                      - "rds:DeleteDBInstance"
+                      - "s3:DeleteBucket"
+                  emergencyAccess:
                     type: object
-                    description: Description of the schedule of the policy assignment to the role. The role must be provisioned and must have the policy assigned ONLY during the time interval (from->until)
+                    description: "Emergency access configuration"
                     properties:
-                      roleName:
-                        type: string
-                        description: The role to provision and attach the policy to
-                      policyArn:
-                        type: string
-                        description: The policy ARN to attach to the role
-                      scheduleFrom:
-                        type: string
-                        description: TODO adapt the format of the time as it fits better for usability and handling in the composition
-                      scheduleUntil:
-                        type: string
-                        description: TODO adapt the format of the time as it fits better for usability and handling in the composition
+                      enabled:
+                        type: boolean
+                        description: "Whether emergency access is enabled"
+                        default: false
+                      approvers:
+                        type: array
+                        description: "List of approver ARNs for emergency access"
+                        items:
+                          type: string
+                        default: []
+            required:
+              - timeWindow
+          status:
+            type: object
+            properties:
+              roleArn:
+                type: string
+                description: "ARN of the created IAM role"
+              policyArn:
+                type: string
+                description: "ARN of the created IAM policy"
+              schedulerStatus:
+                type: string
+                description: "Status of the policy scheduler"
+                enum:
+                  - "Active"
+                  - "Inactive"
+                  - "Error"
+              lastUpdate:
+                type: string
+                description: "Timestamp of last policy update"
+                format: date-time
+              accessWindow:
+                type: object
+                description: "Current access window status"
+                properties:
+                  isOpen:
+                    type: boolean
+                    description: "Whether access window is currently open"
+                  nextChange:
+                    type: string
+                    description: "Timestamp of next access window change"
+                    format: date-time
+              attachedPolicies:
+                type: array
+                description: "List of currently attached policies"
+                items:
+                  type: object
+                  properties:
+                    arn:
+                      type: string
+                    name:
+                      type: string
+                    attachedAt:
+                      type: string
+                      format: date-time
+    additionalPrinterColumns:
+    - name: Role ARN
+      type: string
+      jsonPath: .status.roleArn
+    - name: Access Window
+      type: string
+      jsonPath: .spec.timeWindow.start
+      description: "Access window start time"
+    - name: Status
+      type: string
+      jsonPath: .status.schedulerStatus
+    - name: Window Open
+      type: boolean
+      jsonPath: .status.accessWindow.isOpen
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
