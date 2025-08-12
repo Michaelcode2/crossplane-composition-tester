@@ -56,7 +56,7 @@
 
 ### File Structure for Local Testing:
 
-Created this structure in the crossplane-composition-tester repo:
+Structure created in the crossplane-composition-tester repo:
 
 ```
 test/
