@@ -119,12 +119,12 @@ Feature: Policy Scheduler Composition
       | param name          | param value            |
       | spec.roleName      | custom-prod-role       |
       | spec.policyName    | custom-prod-policy     |
-      | spec.description   | Custom production access|
+      | spec.description   | Production access role with time-based policy attachment|
     When crossplane renders the composition
     Then check that resource production-role has parameters
       | param name                     | param value              |
       | spec.forProvider.name         | custom-prod-role         |
-      | spec.forProvider.description  | Custom production access |
+      | spec.forProvider.description  | Production access role with time-based policy attachment |
     And check that resource production-policy has parameters
       | param name                     | param value              |
       | spec.forProvider.name         | custom-prod-policy       |

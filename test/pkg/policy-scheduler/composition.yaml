@@ -12,124 +12,130 @@ spec:
   
   mode: Pipeline
   pipeline:
+    - step: environmentConfigs
+      functionRef:
+        name: function-environment-configs
+      input:
+        apiVersion: environmentconfigs.fn.crossplane.io/v1beta1
+        kind: Input
+        spec:
+          environmentConfigs:
+          - type: Reference
+            ref:
+              name: envconfig
     - step: create-role
       functionRef:
-        name: function-patch-and-transform
+        name: function-go-templating
       input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: production-role
-            base:
-              apiVersion: iam.aws.upbound.io/v1beta1
-              kind: Role
-              metadata:
-                name: production-access-role
-              spec:
-                forProvider:
-                  description: "Production access role with time-based policy attachment"
-                  assumeRolePolicy: |
-                    {
-                      "Version": "2012-10-17",
-                      "Statement": [
-                        {
-                          "Effect": "Allow",
-                          "Principal": {
-                            "Service": "ec2.amazonaws.com"
-                          },
-                          "Action": "sts:AssumeRole"
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |-
+            {{ $accountId:=(index .context "apiextensions.crossplane.io/environment").accountId }}
+            {{ $region:=(index .context "apiextensions.crossplane.io/environment").region }}
+            {{ $roleName:=.observed.composite.resource.spec.roleName }}
+            {{ $description:=.observed.composite.resource.spec.description }}
+            {{ $compositeResourceName:=.observed.composite.resource.metadata.name }}
+            {{ $startTime:=.observed.composite.resource.spec.timeWindow.start }}
+            {{ $endTime:=.observed.composite.resource.spec.timeWindow.end }}
+            
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Role
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: production-role
+              name: {{$compositeResourceName}}-role
+            spec:
+              forProvider:
+                name: {{$roleName}}
+                description: {{$description}}
+                assumeRolePolicy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Principal": {
+                          "Service": "ec2.amazonaws.com"
                         },
-                        {
-                          "Effect": "Allow",
-                          "Principal": {
-                            "AWS": "arn:aws:iam::*:root"
+                        "Action": "sts:AssumeRole"
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Principal": {
+                          "AWS": "arn:aws:iam::{{$accountId}}:root"
+                        },
+                        "Action": "sts:AssumeRole",
+                        "Condition": {
+                          "DateGreaterThan": {
+                            "aws:CurrentTime": "{{$startTime}}:00Z"
                           },
-                          "Action": "sts:AssumeRole",
-                          "Condition": {
-                            "DateGreaterThan": {
-                              "aws:CurrentTime": "2025-01-01T09:00:00Z"
-                            },
-                            "DateLessThan": {
-                              "aws:CurrentTime": "2025-12-31T17:00:00Z"
-                            }
+                          "DateLessThan": {
+                            "aws:CurrentTime": "{{$endTime}}:00Z"
                           }
                         }
-                      ]
-                    }
-                  tags:
-                    Environment: production
-                    Purpose: time-restricted-access
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "%s-role"
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.roleName
-                toFieldPath: spec.forProvider.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.description
-                toFieldPath: spec.forProvider.description
-              
+                      }
+                    ]
+                  }
+                tags:
+                  Environment: production
+                  Purpose: time-restricted-access
+                  Region: {{$region}}
+                  AccountId: {{$accountId}}
     - step: create-production-policy
       functionRef:
-        name: function-patch-and-transform
+        name: function-go-templating
       input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: production-policy
-            base:
-              apiVersion: iam.aws.upbound.io/v1beta1
-              kind: Policy
-              metadata:
-                name: production-access-policy
-              spec:
-                forProvider:
-                  description: "Production access policy with time restrictions"
-                  policy: |
-                    {
-                      "Version": "2012-10-17",
-                      "Statement": [
-                        {
-                          "Effect": "Allow",
-                          "Action": [
-                            "ec2:*",
-                            "s3:*",
-                            "rds:*",
-                            "lambda:*"
-                          ],
-                          "Resource": "*",
-                          "Condition": {
-                            "DateGreaterThan": {
-                              "aws:CurrentTime": "09:00:00Z"
-                            },
-                            "DateLessThan": {
-                              "aws:CurrentTime": "17:00:00Z"
-                            }
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |-
+            {{ $compositeResourceName:=.observed.composite.resource.metadata.name }}
+            {{ $policyName:=.observed.composite.resource.spec.policyName }}
+            {{ $startTime:=.observed.composite.resource.spec.timeWindow.start }}
+            {{ $endTime:=.observed.composite.resource.spec.timeWindow.end }}
+            
+            ---
+            apiVersion: iam.aws.upbound.io/v1beta1
+            kind: Policy
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: production-policy
+              name: {{$compositeResourceName}}-policy
+            spec:
+              forProvider:
+                name: {{$policyName}}
+                description: "Production access policy with time restrictions"
+                policy: |
+                  {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "ec2:*",
+                          "s3:*",
+                          "rds:*",
+                          "lambda:*"
+                        ],
+                        "Resource": "*",
+                        "Condition": {
+                          "DateGreaterThan": {
+                            "aws:CurrentTime": "{{$startTime}}:00Z"
+                          },
+                          "DateLessThan": {
+                            "aws:CurrentTime": "{{$endTime}}:00Z"
                           }
                         }
-                      ]
-                    }
-                  tags:
-                    Environment: production
-                    Purpose: time-restricted-policy
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "%s-policy"
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.policyName
-                toFieldPath: spec.forProvider.name
+                      }
+                    ]
+                  }
+                tags:
+                  Environment: production
+                  Purpose: time-restricted-policy
 
     - step: attach-policy-to-role
       functionRef:
@@ -162,100 +168,61 @@ spec:
 
     - step: create-time-scheduler
       functionRef:
-        name: function-patch-and-transform
+        name: function-go-templating
       input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: scheduler-lambda
-            base:
-              apiVersion: lambda.aws.upbound.io/v1beta1
-              kind: Function
-              metadata:
-                name: policy-scheduler-function
-              spec:
-                forProvider:
-                  description: "Lambda function to manage time-based policy attachments"
-                  runtime: python3.9
-                  handler: index.handler
-                  role: "arn:aws:iam::123456789012:role/lambda-execution-role"
-                  code:
-                    zipFile: |
-                      import json
-                      import boto3
-                      import datetime
-                      from dateutil import tz
-                      
-                      def handler(event, context):
-                          iam = boto3.client('iam')
-                          
-                          # Get current time
-                          utc = tz.gettz('UTC')
-                          now = datetime.datetime.now(utc)
-                          current_hour = now.hour
-                          
-                          # Define access window (9 AM to 5 PM UTC)
-                          start_hour = 9
-                          end_hour = 17
-                          
-                          role_name = event.get('role_name')
-                          policy_arn = event.get('policy_arn')
-                          
-                          if start_hour <= current_hour < end_hour:
-                              # Within access window - ensure policy is attached
-                              try:
-                                  iam.attach_role_policy(
-                                      RoleName=role_name,
-                                      PolicyArn=policy_arn
-                                  )
-                                  return {
-                                      'statusCode': 200,
-                                      'body': json.dumps(f'Policy attached to {role_name}')
-                                  }
-                              except Exception as e:
-                                  return {
-                                      'statusCode': 500,
-                                      'body': json.dumps(f'Error attaching policy: {str(e)}')
-                                  }
-                          else:
-                              # Outside access window - ensure policy is detached
-                              try:
-                                  iam.detach_role_policy(
-                                      RoleName=role_name,
-                                      PolicyArn=policy_arn
-                                  )
-                                  return {
-                                      'statusCode': 200,
-                                      'body': json.dumps(f'Policy detached from {role_name}')
-                                  }
-                              except Exception as e:
-                                  return {
-                                      'statusCode': 500,
-                                      'body': json.dumps(f'Error detaching policy: {str(e)}')
-                                  }
-                  tags:
-                    Environment: production
-                    Purpose: policy-scheduler
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: metadata.name
-                toFieldPath: metadata.name
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "%s-scheduler"
-              # Use timeWindow fields for time boundaries (start/end/timezone)
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.timeWindow.timezone
-                toFieldPath: spec.forProvider.environment.variables.TIMEZONE
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.timeWindow.start
-                toFieldPath: spec.forProvider.environment.variables.START_TIME
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.timeWindow.end
-                toFieldPath: spec.forProvider.environment.variables.END_TIME
-
+        apiVersion: gotemplating.fn.crossplane.io/v1beta1
+        kind: GoTemplate
+        source: Inline
+        inline:
+          template: |-
+            {{ $accountId:=(index .context "apiextensions.crossplane.io/environment").accountId }}
+            {{ $region:=(index .context "apiextensions.crossplane.io/environment").region }}
+            {{ $compositeResourceName:=.observed.composite.resource.metadata.name }}
+            {{ $timezone:=.observed.composite.resource.spec.timeWindow.timezone }}
+            {{ $startTime:=.observed.composite.resource.spec.timeWindow.start }}
+            {{ $endTime:=.observed.composite.resource.spec.timeWindow.end }}
+            
+            ---
+            apiVersion: lambda.aws.upbound.io/v1beta1
+            kind: Function
+            metadata:
+              annotations:
+                gotemplating.fn.crossplane.io/composition-resource-name: scheduler-lambda
+              name: {{$compositeResourceName}}-scheduler
+            spec:
+              forProvider:
+                description: "Lambda function to manage time-based policy attachments in {{$region}}"
+                runtime: python3.9
+                handler: index.handler
+                role: "arn:aws:iam::{{$accountId}}:role/lambda-execution-role"
+                environment:
+                  variables:
+                    ACCOUNT_ID: "{{$accountId}}"
+                    REGION: "{{$region}}"
+                    TIMEZONE: "{{$timezone}}"
+                    START_TIME: "{{$startTime}}"
+                    END_TIME: "{{$endTime}}"
+                code:
+                  zipFile: |
+                    import json
+                    import boto3
+                    import datetime
+                    import os
+                    from dateutil import tz
+                    
+                    def handler(event, context):
+                        # Use environment variables from the template
+                        account_id = os.environ.get('ACCOUNT_ID')
+                        region = os.environ.get('REGION')
+                        timezone = os.environ.get('TIMEZONE', 'UTC')
+                        
+                        iam = boto3.client('iam', region_name=region)
+                        # ... rest of lambda code
+                tags:
+                  Environment: production
+                  Purpose: policy-scheduler
+                  Region: {{$region}}
+                  AccountId: {{$accountId}}
     - step: create-event-rule
       functionRef:
         name: function-patch-and-transform

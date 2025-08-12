@@ -3,5 +3,15 @@ kind: EnvironmentConfig
 metadata:
   name: envconfig
 data:
+  # Existing values
   accountId: "1234"
   region: "eu-central-1"
+  
+  # New values for policy-scheduler
+  lambdaExecutionRoleName: "lambda-execution-role"
+  lambdaRuntime: "python3.9"
+  defaultScheduleInterval: "1 hour"
+  environment: "production"
+  
+  # Optional: CloudWatch/EventBridge specific settings
+  eventBridgeState: "ENABLED"
